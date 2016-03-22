@@ -59,5 +59,5 @@ namespace PeridigmNS {
   };
 }
 
-#endif // PERIDIGM_COMPUTE_KINETIC_ENERGY_HPP
+#endif // PERIDIGM_COMPUTE_CRACKTIP_LOCATION_HPP
 #endif // COMPUTE_CLASS
