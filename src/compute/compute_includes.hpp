@@ -16,6 +16,7 @@
 #include "Peridigm_Compute_Neighborhood_Volume.hpp"
 #include "Peridigm_Compute_Nearest_Point_Data.hpp"
 #include "Peridigm_Compute_Block_Data.hpp"
+#include "Peridigm_Compute_CrackTip_Location.hpp" // inPrince edit: addition of new CrackTip_Location compute class
 #include "Peridigm_Compute_Node_Set_Data.hpp"
 #include "Peridigm_Compute_Deformation_Gradient.hpp"
 #include "Peridigm_Compute_Stored_Elastic_Energy_Density.hpp"
