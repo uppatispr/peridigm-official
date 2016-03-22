@@ -126,6 +126,7 @@ PeridigmNS::Peridigm::Peridigm(const MPI_Comm& comm,
     fluidPressureUFieldId(-1),
     fluidPressureVFieldId(-1),
     fluidFlowDensityFieldId(-1),
+    timeStepCountFieldId(-1),		// inPrince edit: initialization for field id of TimeStep_Count
     numMultiphysDoFs(0)
 {
 #ifdef HAVE_MPI
@@ -292,6 +293,9 @@ PeridigmNS::Peridigm::Peridigm(const MPI_Comm& comm,
   contactForceDensityFieldId         = fieldManager.getFieldId(PeridigmField::NODE,    PeridigmField::VECTOR, PeridigmField::TWO_STEP, "Contact_Force_Density");
   externalForceDensityFieldId        = fieldManager.getFieldId(PeridigmField::NODE,    PeridigmField::VECTOR, PeridigmField::TWO_STEP, "External_Force_Density");
 
+  // inPrince edit: field id location for TimeStep_Count in field manager
+  timeStepCountFieldId               = fieldManager.getFieldId(PeridigmField::GLOBAL,  PeridigmField::SCALAR, PeridigmField::CONSTANT, "TimeStep_Count"); 
+
   // Create field ids that may be required for output
   fieldManager.getFieldId(PeridigmField::ELEMENT, PeridigmField::SCALAR, PeridigmField::CONSTANT, "Proc_Num");
 
@@ -436,6 +440,7 @@ PeridigmNS::Peridigm::Peridigm(const MPI_Comm& comm,
   auxiliaryFieldIds.push_back(displacementFieldId);
   auxiliaryFieldIds.push_back(velocityFieldId);
   auxiliaryFieldIds.push_back(externalForceDensityFieldId);
+  auxiliaryFieldIds.push_back(timeStepCountFieldId);                            // inPrince edit: Allocate space in blocks for the TimeStep_Count field
   if(analysisHasContact)
     auxiliaryFieldIds.push_back(contactForceDensityFieldId);
   if(analysisHasMultiphysics) {
@@ -1256,6 +1261,11 @@ void PeridigmNS::Peridigm::executeExplicit(Teuchos::RCP<Teuchos::ParameterList> 
   double timeInitial = solverParams->get("Initial Time", 0.0);
   double timeFinal   = solverParams->get("Final Time", 1.0);
   double timeCurrent = timeInitial;
+
+  // inPrince edit: set timeStepCount to 0 when current time is equal to provided initial time
+  Teuchos::RCP<Epetra_Vector> timeStepCount_data = blocks->begin()->getData(timeStepCountFieldId, PeridigmField::STEP_NONE);
+  (*timeStepCount_data)[0] = 0;
+
   workset->timeStep = dt;
   double dt2 = dt/2.0;
   int nsteps = static_cast<int>( floor((timeFinal-timeInitial)/dt) );
@@ -1368,6 +1378,9 @@ void PeridigmNS::Peridigm::executeExplicit(Teuchos::RCP<Teuchos::ParameterList> 
 
     double timePrevious = timeCurrent;
     timeCurrent = timeInitial + (step*dt);
+
+  // inPrince edit: set timeStepCount equal to step number in the current loop when current time is greater than provided initial time
+  (*timeStepCount_data)[0] = step;
 
     for(blockIt = blocks->begin() ; blockIt != blocks->end() ; blockIt++){
       string damageModelName = blockIt->getDamageModelName();

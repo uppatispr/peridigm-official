@@ -607,6 +607,7 @@ namespace PeridigmNS {
     int contactForceDensityFieldId;
     int externalForceDensityFieldId;
     int partialVolumeFieldId;
+    int timeStepCountFieldId;		// inPrince edit: field id for TimeStep_Count (step count of 0 refers to initial time)
 
     // multiphyics information
     int fluidPressureYFieldId;

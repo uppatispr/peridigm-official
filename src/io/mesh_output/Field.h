@@ -102,6 +102,8 @@ enum Type {
   FORCE_DENSITY,
   CONTACT_FORCE,
   CONTACT_FORCE_DENSITY,
+  CRACKTIP_LOCATION,		// inPrince edit: list CrackTip_Location compute class quantity
+  TIMESTEP_COUNT,		// inPrince edit: list quantity used to determing explicit method simulation time step count
   RESIDUAL,
   BOND_DAMAGE,
   PARTIAL_VOLUME,
@@ -248,6 +250,8 @@ const Field_NS::FieldSpec GLOBAL_STRAIN_ENERGY(Field_ENUM::STRAIN_ENERGY,       
 const Field_NS::FieldSpec GLOBAL_STRAIN_ENERGY_DENSITY(Field_ENUM::STRAIN_ENERGY_DENSITY, Field_ENUM::GLOBAL, Field_ENUM::SCALAR, Field_ENUM::CONSTANT, "Global_Strain_Energy_Density");
 const Field_NS::FieldSpec GLOBAL_LINEAR_MOMENTUM(Field_ENUM::LINEAR_MOMENTUM,             Field_ENUM::GLOBAL, Field_ENUM::SCALAR, Field_ENUM::CONSTANT, "Global_Linear_Momentum");
 const Field_NS::FieldSpec GLOBAL_ANGULAR_MOMENTUM(Field_ENUM::ANGULAR_MOMENTUM,           Field_ENUM::GLOBAL, Field_ENUM::SCALAR, Field_ENUM::CONSTANT, "Global_Angular_Momentum");
+const Field_NS::FieldSpec CRACKTIP_LOCATION(Field_ENUM::CRACKTIP_LOCATION,                Field_ENUM::GLOBAL, Field_ENUM::VECTOR3D, Field_ENUM::TWO_STEP, "CrackTip_Location");         // inPrince edit: define CrackTip_Location compute class quantity as two_step global vec3D field
+const Field_NS::FieldSpec TIMESTEP_COUNT(Field_ENUM::TIMESTEP_COUNT,              	  Field_ENUM::GLOBAL, Field_ENUM::SCALAR, Field_ENUM::CONSTANT, "TimeStep_Count");      	// inPrince edit: define TimeStep_Count as global scalar field
 
 /*
  * Multiphysics fieldspecs
@@ -342,6 +346,8 @@ struct FieldSpecMap {
 		mymap[BC_MASK.getLabel()]                      = BC_MASK;
     	mymap[DAMAGE.getLabel()]                       = DAMAGE;
     	mymap[CRITICAL_STRETCH.getLabel()]             = CRITICAL_STRETCH;
+		mymap[CRACKTIP_LOCATION.getLabel()]            = CRACKTIP_LOCATION;     // inPrince edit: add CrackTip_Location quantity to fieldSpecMap
+                mymap[TIMESTEP_COUNT.getLabel()]               = TIMESTEP_COUNT;        // inPrince edit: add TimeStep_Count quantity to fieldSpecMap
 		mymap[KINETIC_ENERGY.getLabel()]               = KINETIC_ENERGY;
 		mymap[STRAIN_ENERGY.getLabel()]                = STRAIN_ENERGY;
 		mymap[STRAIN_ENERGY_DENSITY.getLabel()]        = STRAIN_ENERGY_DENSITY;
