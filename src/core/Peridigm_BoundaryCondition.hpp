@@ -183,6 +183,35 @@ private:
   double deltaTCoeff;
 };
 
+/*! \brief new type of BC defined for Viscous Damping boundary layer
+ */
+class DampingBC : public BoundaryCondition{
+public:
+
+  //! Constructor.
+  DampingBC(const string & name_,
+    const Teuchos::ParameterList& bcParams_,
+    Teuchos::RCP<Epetra_Vector> toVector_,
+    Peridigm * peridigm_,
+    const bool isCumulative_,
+    const double & coeff_=1.0,
+    const double & deltaTCoeff_=0.0);
+
+  //! Destructor.
+  ~DampingBC(){}
+
+  //! apply the damping type of boundary condition
+  virtual void apply(Teuchos::RCP< std::map< std::string, std::vector<int> > > nodeSets, const double & timeCurrent=0.0, const double & timePrevious=0.0);
+
+protected:
+
+private:
+
+  double coeff;
+  double deltaTCoeff;
+
+};
+
 }
 
 #endif // PERIDIGM_BOUNARYCONDITION_HPP

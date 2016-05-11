@@ -116,7 +116,7 @@ void PeridigmNS::BoundaryAndInitialConditionManager::initialize(Teuchos::RCP<Dis
       break;
       case PRESCRIBED_FLUID_PRESSURE_U:
       {
-				// a prescribed fluid pressure boundary condition will automatically update deltaFluidPressureU      
+				// a prescribed fluid pressure boundary condition will automatically update deltaFluidPressureU
         Teuchos::RCP<Epetra_Vector> toVector = peridigm->getFluidPressureDeltaU();
         bcPtr = Teuchos::rcp(new DirichletIncrementBC(name,bcParams,toVector,peridigm,false,1.0,0.0));
         boundaryConditions.push_back(bcPtr);
@@ -154,6 +154,12 @@ void PeridigmNS::BoundaryAndInitialConditionManager::initialize(Teuchos::RCP<Dis
         forceContributions.push_back(bcPtr);
       }
       break;
+      case VISCOUS_DAMPING:
+      {
+        Teuchos:RCP<Epetra_Vector> toVector = peridigm->getV();
+        bcPtr = Teuchos::rcp(new DampingBC(name,bcParams,toVector,peridigm,false,1.0,0.0));
+        boundaryConditions.push_back(bcPtr);
+      }
       case NO_SUCH_BOUNDARY_CONDITION_TYPE:
         break;
       default :
@@ -516,7 +522,7 @@ void PeridigmNS::BoundaryAndInitialConditionManager::applyKinematicBC_InsertZero
 						}
 					}
 				}
-			}	
+			}
 		}
 	}
   PeridigmNS::Timer::self().stopTimer("Apply Boundary Conditions");
@@ -655,7 +661,7 @@ void PeridigmNS::BoundaryAndInitialConditionManager::applyKinematicBC_InsertZero
               int numEntriesToSetToZero = columnIndex;
               for(int iRow=0 ; iRow<mat->NumMyRows() ; ++iRow)
                     mat->ReplaceMyValues(iRow, numEntriesToSetToZero, &jacobianValues[0], &jacobianColIndices[0]);
-                
+
               for(unsigned int i=0 ; i<nodeList.size() ; i++){
                 // zero out the row and put diagonalEntry on the diagonal
 								// Assumes one additional pressure term for every three sm dofs
@@ -695,9 +701,9 @@ string PeridigmNS::BoundaryAndInitialConditionManager::nodeSetStringToFileName(s
 
   string emptyString = "";
   string whitespace = " \t";
-  
+
   boost::trim(str);
-  
+
   // If there is any whitespace then str is a list, not a file name
   if(str.find_first_of(whitespace) != std::string::npos)
     return emptyString;
