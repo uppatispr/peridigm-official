@@ -55,25 +55,13 @@ using namespace std;
 
 PeridigmNS::DruckerPragerCorrespondenceMaterial::DruckerPragerCorrespondenceMaterial(const Teuchos::ParameterList& params)
   : CorrespondenceMaterial(params),
-    m_yieldStress(0.0), m_strainHardeningExponent(0.0), m_rateHardeningExponent(0.0), m_refStrainRate(0.0), m_refStrain0(0.0), m_refStrain1(0.0),
-    m_isFlaw(false), m_flawLocationX(0.0), m_flawLocationY(0.0), m_flawLocationZ(0.0), m_flawSize(0.0), m_flawMagnitude(0.0),
+    m_yieldStress(0.0), m_hardModulus(0.0), m_beta(0.0),
     m_modelCoordinatesFieldId(-1), m_unrotatedRateOfDeformationFieldId(-1), m_unrotatedCauchyStressFieldId(-1), m_vonMisesStressFieldId(-1), 
     m_equivalentPlasticStrainFieldId(-1)
 {
-  m_yieldStress = params.get<double>("Yield Stress");
-  m_strainHardeningExponent = params.get<double>("Strain Hardening Exponent");
-  m_rateHardeningExponent = params.get<double>("Rate Hardening Exponent");
-  m_refStrainRate = params.get<double>("Reference Strain Rate");
-  m_refStrain0 = params.get<double>("Reference Strain 0");
-  m_refStrain1 = params.get<double>("Reference Strain 1");
-  if(params.isParameter("Enable Flaw")){
-    m_isFlaw = params.get<bool>("Enable Flaw");
-    m_flawLocationX = params.get<double>("Flaw Location X");
-    m_flawLocationY = params.get<double>("Flaw Location Y");
-    m_flawLocationZ = params.get<double>("Flaw Location Z");
-    m_flawSize = params.get<double>("Flaw Size");
-    m_flawMagnitude = params.get<double>("Flaw Magnitude");
-  }
+  m_yieldStress = params.get<double>("Unconfined Compressive Strength");
+  m_hardModulus = params.get<double>("Hardening Modulus");
+  m_beta = params.get<double>("Beta");
 
 
   PeridigmNS::FieldManager& fieldManager = PeridigmNS::FieldManager::self();
@@ -147,10 +135,7 @@ PeridigmNS::DruckerPragerCorrespondenceMaterial::computeCauchyStress(const doubl
                                                         m_bulkModulus, 
                                                         m_shearModulus, 
                                                         m_yieldStress, 
-                                                        m_strainHardeningExponent, 
-                                                        m_rateHardeningExponent, 
-                                                        m_refStrainRate, 
-                                                        m_refStrain0, 
-                                                        m_refStrain1,
+                                                        m_hardModulus,
+                                                        m_beta,
                                                         dt);
 }

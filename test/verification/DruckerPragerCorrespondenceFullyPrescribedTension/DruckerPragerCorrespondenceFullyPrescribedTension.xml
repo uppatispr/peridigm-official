@@ -2,28 +2,19 @@
   
   <ParameterList name="Discretization">
 	<Parameter name="Type" type="string" value="Exodus" />
-	<Parameter name="Input Mesh File" type="string" value="ViscoplasticNeedlemanFullyPrescribedTension_NoFlaw.g"/>
+	<Parameter name="Input Mesh File" type="string" value="DruckerPragerCorrespondenceFullyPrescribedTension.g"/>
   </ParameterList>
 
   <ParameterList name="Materials">
 	<ParameterList name="My Elastic Plastic Correspondence Material">
-	  <Parameter name="Material Model" type="string" value="Viscoplastic Needleman Correspondence"/>
+	  <Parameter name="Material Model" type="string" value="Drucker-Prager Correspondence"/>
 	  <Parameter name="Density" type="double" value="7800.0"/>
       <Parameter name="Young's Modulus" type="double" value="211.0e9"/>
       <Parameter name="Poisson's Ratio" type="double" value="0.0"/>   <!-- One-dimensional simulation -->
-	  <Parameter name="Hourglass Coefficient" type="double" value="0.0"/>
-	  <Parameter name="Yield Stress" type="double" value="460.0e6"/>
-	  <Parameter name="Strain Hardening Exponent" type="double" value="0.1"/>
-	  <Parameter name="Rate Hardening Exponent" type="double" value="0.01"/>
-	  <Parameter name="Reference Strain Rate" type="double" value="0.001"/>
-	  <Parameter name="Reference Strain 0" type="double" value="0.00218"/>
-	  <Parameter name="Reference Strain 1" type="double" value="0.436"/>
-	  <Parameter name="Enable Flaw" type="bool" value="false"/>
-	  <Parameter name="Flaw Location X" type="double" value="0.0"/>
-	  <Parameter name="Flaw Location Y" type="double" value="0.0"/>
-	  <Parameter name="Flaw Location Z" type="double" value="0.0"/>
-	  <Parameter name="Flaw Size" type="double" value="0.751"/>
-	  <Parameter name="Flaw Magnitude" type="double" value="0.2"/>
+	  <Parameter name="Hourglass Coefficient" type="double" value="0.001"/>
+	  <Parameter name="Unconfined Compressive Strength" type="double" value="460.0e6"/>
+	  <Parameter name="Hardening Modulus" type="double" value="1.0e-6"/>
+	  <Parameter name="Beta" type="double" value="0.0"/>
 	</ParameterList>
   </ParameterList>
 
@@ -89,7 +80,7 @@
 
   <ParameterList name="Output1">
 	<Parameter name="Output File Type" type="string" value="ExodusII"/>
-	<Parameter name="Output Filename" type="string" value="ViscoplasticNeedlemanFullyPrescribedTension_NoFlaw"/>
+	<Parameter name="Output Filename" type="string" value="DruckerPragerCorrespondenceFullyPrescribedTension_NoFlaw"/>
 	<Parameter name="Output Frequency" type="int" value="50"/>
 	<ParameterList name="Output Variables">
           <Parameter name="Volume" type="bool" value="true"/>
@@ -111,7 +102,7 @@
   </ParameterList>
   <ParameterList name="Output2">
 	<Parameter name="Output File Type" type="string" value="ExodusII"/>
-	<Parameter name="Output Filename" type="string" value="ViscoplasticNeedlemanFullyPrescribedTension_NoFlaw"/>
+	<Parameter name="Output Filename" type="string" value="DruckerPragerCorrespondenceFullyPrescribedTension"/>
 	<Parameter name="Output Frequency" type="int" value="1"/>
 	<ParameterList name="Output Variables">
           <Parameter name="Max_Von_Mises_Stress" type="bool" value="true"/>

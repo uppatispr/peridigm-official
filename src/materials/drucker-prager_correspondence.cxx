@@ -67,11 +67,8 @@ const int numPoints,
 const double bulkMod,
 const double shearMod,
 const double yieldStress,
-const double strainHardExp,
-const double rateHardExp, 
-const double refStrainRate,
-const double refStrain0,
-const double refStrain1,
+const double hardMod,
+const double beta,
 const double dt
 )
 {
@@ -101,20 +98,13 @@ const double dt
   ScalarT dilatationInc;
   ScalarT sphericalStressN;
   ScalarT sphericalStressNP1;
+  ScalarT pressure;
+  ScalarT hardTerm;
   ScalarT tempScalar;
   ScalarT yieldFunctionVal;
 
   ScalarT deltaLambda;
-  ScalarT deltaLambdaOld = 0.0;
-  ScalarT a;
-  ScalarT b;
-  ScalarT c;
-  ScalarT fb;
-  ScalarT fc;
-  ScalarT yfb;
-  ScalarT yfc;
 
-  double reducedYieldStress;
   const double* modelCoord = modelCoordinates;
 
 
@@ -165,29 +155,25 @@ const double dt
       // Avoid divide-by-zero
       deviatoricStressMagnitudeNP1 = std::max(1.0e-20,sqrt(tempScalar));
 
-      *vmStress = sqrt(3.0/2.0*tempScalar);
+      // Compute and store vonMises stress
+      (*vonMisesStress) = sqrt(3 / 2. * tempScalar);
+
+      // Compute the yield function value
+      hardTerm = yieldStress + hardMod * (*eqpsN);
+      pressure = -sphericalStressNP1;
+
+      yieldFunctionVal = (sqrt(2 / 3.) * (beta * pressure + hardTerm));
 
       // Elastic or plastic?
-      if (*vmStress < yieldStress){
-          // The step is definitely elastic, so skip the yield surface
-          // evaluation.
+      if (deviatoricStressMagnitudeNP1 <= yieldFunctionVal){
+          // The step is definitely elastic, so skip computation of
+          // \delta\lambda
           *eqpsNP1 = *eqpsN;
 
       } else {
           // The step could be plastic, we have to solve for the current value
           // of the yield function to find out.  This is because the yield
-          // function is rate dependent and can change over a load step.
-
-
-          // Compute \S_ij * \epsilon_inc_ij
-          tempScalar = 0.0;
-          for (int j = 0; j < 3; j++) {
-              for (int i = 0; i < 3; i++) {
-                  tempScalar += deviatoricStressNP1[i+3*j] * deviatoricStrainInc[i+3*j];
-              }
-          }
-
-          scalarDeviatoricStrainInc = tempScalar / deviatoricStressMagnitudeNP1;
+          // function could change due to isotropic hardening over a load step
 
           // First go back to step N and compute deviatoric stress and its
           // magnitude.
@@ -210,76 +196,55 @@ const double dt
 
           deviatoricStressMagnitudeN = sqrt(tempScalar);
 
-          //Verbose bi-section method to solve for deltaLambda
-          //TODO: Implement a ``smarter'' faster root solve here, i.e. Brent's
-          //method
-          deltaLambda = 1.0;
-          deltaLambdaOld = 0.0;
-          a = 0.0;
-          b = 1.0;
-          c = (a+b)/2.0;
+          // Compute the normal direction, Qij (tempA)
+          for (int i = 0; i < 9; ++i) {
+              tempA[i] = 3 / 2. * sqrt(2 / 3.) * deviatoricStressNP1[i] / deviatoricStressMagnitudeNP1;
+          }
+          tempA[0] += beta / 3.0;
+          tempA[4] += beta / 3.0;
+          tempA[8] += beta / 3.0;
 
-          //Bisection loop
-          for(int iter = 0; iter < 100000; iter++){
-
-              *eqpsNP1 = *eqpsN + b;
-              yfb = DruckerPragerYieldFunction(b, *eqpsNP1, reducedYieldStress, strainHardExp, rateHardExp, refStrainRate,refStrain0, refStrain1, dt);
-              *eqpsNP1 = *eqpsN + c;
-              yfc = DruckerPragerYieldFunction(c, *eqpsNP1, reducedYieldStress, strainHardExp, rateHardExp, refStrainRate,refStrain0, refStrain1, dt);
-       
-              fb = scalarDeviatoricStrainInc - b - 1.0 / 2.0 / shearMod * (sqrt(2.0/3.0) * yfb - deviatoricStressMagnitudeN);
-              fc = scalarDeviatoricStrainInc - c - 1.0 / 2.0 / shearMod * (sqrt(2.0/3.0) * yfc - deviatoricStressMagnitudeN);
-              
-              if(fb > 0.0 && fc > 0.0) {
-                  b = c;
-              } 
-              else if(fb < 0.0 && fc < 0.0){
-                  b = c;
-              }
-              else{
-                  a = c;
-              }
-
-              deltaLambdaOld = c;
-              c = (a+b)/2.0;
-              deltaLambda = c;
-
-              if(fabs(deltaLambda - deltaLambdaOld)/fabs(deltaLambda) < 1.0e-6){
-                  //We're converged, stop
-                  break;
-              }
-              else if (iter == 99999){
-                  //Error message here!
-                  std::cout << "Bisection method failed to converge in 1e6 iterations" << std::endl;
-                  break;
+          tempScalar = 0.0;
+          for (int j = 0; j < 3; j++) {
+              for (int i = 0; i < 3; i++) {
+                  tempScalar += tempA[i+3*j] * tempA[i+3*j];
               }
           }
 
-          //Increment the plastic strain for the purposes of evaluating the
-          //yield surface
-          *eqpsNP1 = *eqpsN + sqrt(2.0/3.0) * deltaLambda;
-          //Evaluate the extent of the yield surface with the result of
-          //DruckerPragerFindRoot
-          yieldFunctionVal = DruckerPragerYieldFunction(deltaLambda, 
-                                                                *eqpsNP1, 
-                                                                reducedYieldStress, 
-                                                                strainHardExp, 
-                                                                rateHardExp, 
-                                                                refStrainRate, 
-                                                                refStrain0, 
-                                                                refStrain1, 
-                                                                dt);
+          //Compute Q_ij unit tensor
+          for (int i = 0; i < 9; ++i) {
+              tempA[i] /= sqrt(tempScalar);
+          }
 
-          //If true, the step is plastic and we need to return to the yield
-          //surface.  
-          if(*vmStress > yieldFunctionVal){
+          //Compute \delta\epsilon_{ij} Q_{ij}
+          tempScalar = 0.0;
+          for (int j = 0; j < 3; j++) {
+              for (int i = 0; i < 3; i++) {
+                  tempScalar += tempA[i+3*j] * deviatoricStrainInc[i+3*j];
+              }
+          }
 
-              //multiply the trial deviatoric stress
-              tempScalar = sqrt(2.0/3.0)*yieldFunctionVal/deviatoricStressMagnitudeNP1;
+          deltaLambda = 3 * (sqrt(6) * deviatoricStressMagnitudeN - 2 * yieldStress
+                        - 2 * pressure * beta - 2 * hardMod * (*eqpsN) + 4 * tempScalar) /
+                        ( 2 * (sqrt(6) * hardMod + 6 * shearMod));
+
+          //Check if yielding
+          if (deltaLambda <= 0.0){
+              // The step is elastic
+              *eqpsNP1 = *eqpsN;
+          } else {
+
+              //Increment the plastic strain for the purposes of evaluating the
+              //yield surface
+              *eqpsNP1 = *eqpsN + sqrt(2.0/3.0) * deltaLambda;
+
+              // Compute the yield function value
+              hardTerm = yieldStress + hardMod * (*eqpsNP1);
+              yieldFunctionVal = (sqrt(2 / 3.) * (beta * pressure + hardTerm));
 
               // Return the deviatoric stress to the yield surface
               for (int i = 0; i < 9; i++) {
-                  deviatoricStressNP1[i] *= tempScalar; 
+                  deviatoricStressNP1[i] = yieldFunctionVal * tempA[i]; 
                   *(stressNP1+i) = deviatoricStressNP1[i];
               }
 
@@ -299,259 +264,9 @@ const double dt
 
               *vmStress = sqrt(3.0/2.0*tempScalar);
 
-              /////////////////////////////////////////////////////////
-              //
-              // Update the equivalent plastic strain
-              //
-              // The algorithm below is generic and should not need to be modified for
-              // any J2 plasticity yield surface.  It uses the difference in the yield
-              // surface location at the NP1 and N steps to increment eqps regardless
-              // of how the plastic multiplier was found in the yield surface
-              // evaluation.
-              //
-              // First go back to step N and compute deviatoric stress and its
-              // magnitude.  We didn't do this earlier because it wouldn't be necassary
-              // if the step is elastic.
-              sphericalStressN = (*stressN + *(stressN+4) + *(stressN+8))/3.0;
-
-              for (int i = 0; i < 9; i++) {
-                  deviatoricStressN[i] = *(stressN+i);
-              }
-              deviatoricStressN[0] -= sphericalStressN;
-              deviatoricStressN[4] -= sphericalStressN;
-              deviatoricStressN[8] -= sphericalStressN;
-
-              tempScalar = 0.0;
-              for (int j = 0; j < 3; j++) {
-                  for (int i = 0; i < 3; i++) {
-                      tempScalar += deviatoricStressN[i+3*j] * deviatoricStressN[i+3*j];
-                  }
-              }
-
-              //Ensure that this is at least a very small number to avoid a divide by
-              //zero
-              deviatoricStressMagnitudeN = std::max(1.0e-20,sqrt(tempScalar));
-
-              for (int i = 0; i < 9; i++) {
-                  //tempA -- The plastic deviatoric strain increment tensor \Delta e_{plastic} = \Delta e_{total} - \Delta e_{elastic}
-                  tempA[i] = deviatoricStrainInc[i] - (deviatoricStressNP1[i] - deviatoricStressN[i]) / 2.0 / shearMod;
-                  //tempB -- Deviatoric stress increment.  This is effectively an average of the deviatoric stress 
-                  //direction unit tensors at the half-step between steps NP1 and N
-                  tempB[i] = (deviatoricStressNP1[i]/deviatoricStressMagnitudeNP1 + 
-                          deviatoricStressN[i]/deviatoricStressMagnitudeN)/2.0;
-              }
-              
-              // Contract the two tensors. This represents a projection of the plastic
-              // strain increment tensor onto the "direction" of deviatoric stress
-              // increment
-              tempScalar = 0.0;
-              for (int j = 0; j < 3; j++) {
-                  for (int i = 0; i < 3; i++) {
-                      tempScalar += tempA[i+3*j] * tempB[i+3*j];
-                  }
-              }
-
-              // Increment the plastic strain
-              *eqpsNP1 = *eqpsN + std::max(0.0, sqrt(2.0/3.0) * tempScalar);
-
-          } else {
-              // The step is elastic
-              *eqpsNP1 = *eqpsN;
           }
       }
   }
-}
-
-// Needleman yield function
-template <typename ScalarT>
-ScalarT DruckerPragerYieldFunction
-(
- const ScalarT deltaLambda,
- const ScalarT eqps,
- const double yieldStress,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-)
-{
-  ScalarT hardTerm = yieldStress * pow(1.0 + eqps/refStrain0, strainHardExp) / (1.0 + pow(eqps/refStrain1,2.0));
-  ScalarT rateTerm = pow(sqrt(2.0/3.0) * deltaLambda / dt / refStrainRate, rateHardExp);
-
-  return (hardTerm * rateTerm);
-}
-
-
-template <typename ScalarT>
-ScalarT DruckerPragerFindRoot
-(
- const ScalarT eqps,
- const ScalarT scalarDeviatoricStrainInc,
- const ScalarT deviatoricStressMagnitude,
- const double yieldStress,
- const double shearMod,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-)
-//    FindRoot seeks the root of a function F(X) in an interval [A,B].
-//
-//  Discussion:
-//
-//    The interval [A,B] must be a change of sign interval for F.
-//    That is, F(A) and F(B) must be of opposite signs.  Then
-//    assuming that F is continuous implies the existence of at least
-//    one value C between A and B for which F(C) = 0.
-//
-//    The location of the zero is determined to within an accuracy
-//    of 6 * MACHEPS * abs ( C ) + 2 * T.
-//
-//  Translated from the FORTRAN code in:
-//
-//    Richard Brent,
-//    Algorithms for Minimization Without Derivatives,
-//    Dover, 2002,
-//    ISBN: 0-486-41998-3,
-//    LC: QA402.5.B74.
-//
-{
-  ScalarT c;
-  ScalarT d;
-  ScalarT e;
-  ScalarT fa;
-  ScalarT fb;
-  ScalarT yfa;
-  ScalarT yfb;
-  ScalarT fc;
-  ScalarT m;
-  ScalarT macheps;
-  ScalarT p;
-  ScalarT q;
-  ScalarT r;
-  ScalarT s;
-  ScalarT sa;
-  ScalarT sb;
-  ScalarT tol;
-
-  ScalarT A = 0.0;
-  ScalarT B = 1.0;
-  ScalarT tolerence = 1.0e-8;
-//
-//  Make local copies of A and B.
-//
-  sa = A;
-  sb = B;
-  yfa = DruckerPragerYieldFunction(sa, eqps, yieldStress, strainHardExp, rateHardExp, refStrainRate,refStrain0, refStrain1, dt);
-  yfb = DruckerPragerYieldFunction(sb, eqps, yieldStress, strainHardExp, rateHardExp, refStrainRate,refStrain0, refStrain1, dt);
-   
-  fa = scalarDeviatoricStrainInc - sa - 1.0/2.0/shearMod*( sqrt(2.0/3.0)*yfa - deviatoricStressMagnitude);
-  fb = scalarDeviatoricStrainInc - sb - 1.0/2.0/shearMod*( sqrt(2.0/3.0)*yfb - deviatoricStressMagnitude);
-
-  c = sa;
-  fc = fa;
-  e = sb - sa;
-  d = e;
-
-  macheps = Teuchos::ScalarTraits<double>::eps();
-
-  for ( ; ; )
-  {
-    if ( fabs ( fc ) < fabs ( fb ) )
-    {
-      sa = sb;
-      sb = c;
-      c = sa;
-      fa = fb;
-      fb = fc;
-      fc = fa;
-    }
-
-    tol = 2.0 * macheps * fabs ( sb ) + tolerence;
-    m = 0.5 * ( c - sb );
-
-    if ( fabs ( m ) <= tol || fb == 0.0 )
-    {
-      break;
-    }
-
-    if ( fabs ( e ) < tol || fabs ( fa ) <= fabs ( fb ) )
-    {
-      e = m;
-      d = e;
-    }
-    else
-    {
-      s = fb / fa;
-
-      if ( sa == c )
-      {
-        p = 2.0 * m * s;
-        q = 1.0 - s;
-      }
-      else
-      {
-        q = fa / fc;
-        r = fb / fc;
-        p = s * ( 2.0 * m * q * ( q - r ) - ( sb - sa ) * ( r - 1.0 ) );
-        q = ( q - 1.0 ) * ( r - 1.0 ) * ( s - 1.0 );
-      }
-
-      if ( 0.0 < p )
-      {
-        q = - q;
-      }
-      else
-      {
-        p = - p;
-      }
-
-      s = e;
-      e = d;
-
-      if ( 2.0 * p < 3.0 * m * q - fabs ( tol * q ) &&
-        p < fabs ( 0.5 * s * q ) )
-      {
-        d = p / q;
-      }
-      else
-      {
-        e = m;
-        d = e;
-      }
-    }
-    sa = sb;
-    fa = fb;
-
-    if ( tol < fabs ( d ) )
-    {
-      sb = sb + d;
-    }
-    else if ( 0.0 < m )
-    {
-      sb = sb + tol;
-    }
-    else
-    {
-      sb = sb - tol;
-    }
-
-    yfb = DruckerPragerYieldFunction( sb, eqps, yieldStress, strainHardExp, rateHardExp, refStrainRate,refStrain0, refStrain1, dt);
-    fb = scalarDeviatoricStrainInc - sb - 1.0/2.0/shearMod*( sqrt(2.0/3.0)*yfb - deviatoricStressMagnitude);
-
-    if ( ( 0.0 < fb && 0.0 < fc ) || ( fb <= 0.0 && fc <= 0.0 ) )
-    {
-      c = sa;
-      fc = fa;
-      e = sb - sa;
-      d = e;
-    }
-  }
-  return sb;
 }
 
 
@@ -569,70 +284,11 @@ const int numPoints,
 const double bulkMod,
 const double shearMod,
 const double yieldStress,
-const double strainHardExp,
-const double rateHardExp, 
-const double refStrainRate,
-const double refStrain0,
-const double refStrain1,
+const double hardMod,
+const double beta,
 const double dt
 );
 
-template double DruckerPragerYieldFunction<double>
-(
- const double deltaLambda,
- const double eqps,
- const double yieldStress,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
-
-template double DruckerPragerFindRoot<double>
-(
- const double eqps,
- const double scalarDeviatoricStrainInc,
- const double deviatoricStressMagnitude,
- const double yieldStress,
- const double shearMod,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
-
-/** Explicit template instantiation for Sacado::Fad::DFad<double>. */
-template Sacado::Fad::DFad<double> DruckerPragerFindRoot<Sacado::Fad::DFad<double> >
-(
- const Sacado::Fad::DFad<double> eqps,
- const Sacado::Fad::DFad<double> scalarDeviatoricStrainInc,
- const Sacado::Fad::DFad<double> deviatoricStressMagnitude,
- const double yieldStress,
- const double shearMod,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
-
-template Sacado::Fad::DFad<double> DruckerPragerYieldFunction<Sacado::Fad::DFad<double> >
-(
- const Sacado::Fad::DFad<double> deltaLambda,
- const Sacado::Fad::DFad<double> eqps,
- const double yieldStress,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
 
 template void updateElasticDruckerPragerCauchyStress<Sacado::Fad::DFad<double> >
 (
@@ -647,11 +303,8 @@ const int numPoints,
 const double bulkMod,
 const double shearMod,
 const double yieldStress,
-const double strainHardExp,
-const double rateHardExp, 
-const double refStrainRate,
-const double refStrain0,
-const double refStrain1,
+const double hardMod,
+const double beta,
 const double dt
 );
 

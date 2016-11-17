@@ -63,43 +63,11 @@ const int numPoints,
 const double bulkMod,
 const double shearMod,
 const double yieldStress,
-const double strainHardExp,
-const double rateHardExp, 
-const double refStrainRate,
-const double refStrain0,
-const double refStrain1,
+const double hardMod,
+const double beta,
 const double dt
 );
 
-template <typename ScalarT>
-ScalarT DruckerPragerFindRoot
-(
- const ScalarT eqps,
- const ScalarT scalarDeviatoricStrainInc,
- const ScalarT deviatoricStressMagnitude,
- const double yieldStress,
- const double shearMod,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
-
-template <typename ScalarT>
-ScalarT DruckerPragerYieldFunction
-(
- const ScalarT deltaLambda,
- const ScalarT eqps,
- const double yieldStress,
- const double strainHardExp,
- const double rateHardExp, 
- const double refStrainRate,
- const double refStrain0,
- const double refStrain1,
- const double dt
-);
 
 }
 

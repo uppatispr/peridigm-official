@@ -84,17 +84,8 @@ namespace PeridigmNS {
     
     // material properties
     double m_yieldStress;
-    double m_strainHardeningExponent; 
-    double m_rateHardeningExponent; 
-    double m_refStrainRate; 
-    double m_refStrain0; 
-    double m_refStrain1;
-    bool m_isFlaw;
-    double m_flawLocationX;
-    double m_flawLocationY;
-    double m_flawLocationZ;
-    double m_flawSize;
-    double m_flawMagnitude;
+    double m_beta;
+    double m_hardModulus;
 
     // field spec ids for all relevant data
     int m_modelCoordinatesFieldId;
